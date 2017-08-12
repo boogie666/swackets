@@ -129,11 +129,30 @@ class SwacketsView
         return Math.max(0, openBracketsOffset % (totalColors + 1))
 
     sweatifySpans: (spans) ->
-        {regex} = config
+        {regex, closeRegex} = config
+        just_saw_fold_marker = false
 
         for span in spans
             match = span.innerHTML.match(regex)
-            @sweatifySpan(span, match) if match
+            # here's where we check and revert the assumption made below
+            if just_saw_fold_marker && match && match[0].match(closeRegex)
+              just_saw_fold_marker = false
+              openBrackets++;
+
+            if match
+              @sweatifySpan(span, match)
+
+            # if we're not dealing with a code fold
+            # we need to check if the current span is actually a fold
+            # if so we just assume that the brace is closed within the fold
+            # on the next iteration we check if the next token is a close bracket
+            # and if it is we revert this assumption
+            if !just_saw_fold_marker
+              just_saw_fold_marker = span.classList.contains("fold-marker")
+              if just_saw_fold_marker
+                openBrackets--;
+
+            continue
 
     sweatifySpan: (span, match) ->
         {openRegex, closeRegex} = config
