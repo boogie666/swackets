@@ -144,7 +144,7 @@ class SwacketsView
 
     shouldAssumeClosingBrace: (span, nextSpan, nextNextSpan) ->
         {openRegex, closeRegex} = config
-        @isFoldMarker(nextSpan) and !(@matches(nextNextSpan, closeRegex) and !@matches(nextNextSpan, openRegex) and @isSameIndentLevel(span, nextNextSpan))
+        !(@matches(nextNextSpan, closeRegex) and !@matches(nextNextSpan, openRegex) and @isSameIndentLevel(span, nextNextSpan))
 
     sweatifySpans: (spans) ->
         {regex, openRegex, closeRegex} = config
@@ -161,8 +161,11 @@ class SwacketsView
               # assumption is broken (i.e. the next 'if' is false) when
               # next line has a closing brace on the same level of indentation
               # as the opening brace
-              if @shouldAssumeClosingBrace(span, nextSpan, nextNextSpan)
-                  openBrackets--
+              if @isFoldMarker(nextSpan)
+                if @shouldAssumeClosingBrace(span, nextSpan, nextNextSpan)
+                    openBrackets--
+                if @matches(nextNextSpan, openRegex)
+                    openBrackets++
 
           i++
 
