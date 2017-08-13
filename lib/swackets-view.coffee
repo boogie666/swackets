@@ -142,7 +142,7 @@ class SwacketsView
 
         leadingWhiteSpaceA == leadingWhiteSpaceB
 
-    shouldAssumeClosingBrace: (span, nextSpan, nextNextSpan) ->
+    shouldAssumeClosingBrace: (span, nextNextSpan) ->
         {openRegex, closeRegex} = config
         !(@matches(nextNextSpan, closeRegex) and !@matches(nextNextSpan, openRegex) and @isSameIndentLevel(span, nextNextSpan))
 
@@ -162,7 +162,7 @@ class SwacketsView
               # next line has a closing brace on the same level of indentation
               # as the opening brace
               if @isFoldMarker(nextSpan)
-                if @shouldAssumeClosingBrace(span, nextSpan, nextNextSpan)
+                if @shouldAssumeClosingBrace(span, nextNextSpan)
                     openBrackets--
                 if @matches(nextNextSpan, openRegex)
                     openBrackets++
