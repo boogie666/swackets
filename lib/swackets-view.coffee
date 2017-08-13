@@ -126,46 +126,55 @@ class SwacketsView
         openBracketsOffset += text.match(openRegex)?.length || 0
         openBracketsOffset -= text.match(closeRegex)?.length || 0
 
-        return Math.max(0, openBracketsOffset % (totalColors + 1))
+        return Math.max(0, openBracketsOffset)
+
+    isFoldMarker: (span) ->
+      span and span.classList.contains("fold-marker")
+
+    matches: (span, regex) ->
+      span and span.innerText.match(regex)
+
+    isSameIndentLevel: (a, b) ->
+        leadingWhiteSpaceSpanA = a.parentNode.querySelector(".leading-whitespace")
+        leadingWhiteSpaceSpanB = b.parentNode.querySelector(".leading-whitespace")
+        leadingWhiteSpaceA = if leadingWhiteSpaceSpanA then leadingWhiteSpaceSpanA.innerText.length else 0;
+        leadingWhiteSpaceB = if leadingWhiteSpaceSpanB then leadingWhiteSpaceSpanB.innerText.length else 0;
+
+        leadingWhiteSpaceA == leadingWhiteSpaceB
+
+    shouldAssumeClosingBrace: (span, nextSpan, nextNextSpan) ->
+        {openRegex, closeRegex} = config
+        @isFoldMarker(nextSpan) and !(@matches(nextNextSpan, closeRegex) and !@matches(nextNextSpan, openRegex) and @isSameIndentLevel(span, nextNextSpan))
 
     sweatifySpans: (spans) ->
-        {regex, closeRegex} = config
-        just_saw_fold_marker = false
+        {regex, openRegex, closeRegex} = config
+        i = 0
+        while i < spans.length
+          span = spans[i]
+          nextSpan = spans[i + 1]
+          nextNextSpan = spans[i + 2]
+          match = span.innerHTML.match(regex);
 
-        for span in spans
-            match = span.innerHTML.match(regex)
-            # here's where we check and revert the assumption made below
-            if just_saw_fold_marker && match && match[0].match(closeRegex)
-              just_saw_fold_marker = false
-              openBrackets++;
-
-            if match
+          if match
               @sweatifySpan(span, match)
+              # assumes closeing brace within a fold.
+              # assumption is broken (i.e. the next 'if' is false) when
+              # next line has a closing brace on the same level of indentation
+              # as the opening brace
+              if @shouldAssumeClosingBrace(span, nextSpan, nextNextSpan)
+                  openBrackets--
 
-            # if we're not dealing with a code fold
-            # we need to check if the current span is actually a fold
-            # if so we just assume that the brace is closed within the fold
-            # on the next iteration we check if the next token is a close bracket
-            # and if it is we revert this assumption
-            if !just_saw_fold_marker
-              just_saw_fold_marker = span.classList.contains("fold-marker")
-              if just_saw_fold_marker
-                openBrackets--;
-
-            continue
+          i++
 
     sweatifySpan: (span, match) ->
         {openRegex, closeRegex} = config
 
-        color = openBrackets
         if (match[0].match(openRegex)) and (! match[0].match(closeRegex))
             openBrackets++
-            if openBrackets > totalColors
-                openBrackets = 0
-        else if (match[0].match(closeRegex)) and (! match[0].match(openRegex))
-            openBrackets--
-            if openBrackets < 0
-                openBrackets = totalColors
-            color = openBrackets
+
+        color = (openBrackets - 1) % (totalColors + 1)
         className = ' swackets-' + color
         span.className = span.className.replace(/( swackets-\d+|$)/, className)
+
+        if (match[0].match(closeRegex)) and (! match[0].match(openRegex))
+            openBrackets--
